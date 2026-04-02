@@ -1,7 +1,6 @@
 # YouTube Safe Kids
 
 <h1 align="center">
-    <img alt="Logo" src="app/static/img/logo.jpg" />
     <img alt="YouTubeSafeKids" src="app/static/img/logo.svg" width="100" height="100"/>
 </h1>
 
