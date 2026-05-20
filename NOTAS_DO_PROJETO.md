@@ -121,7 +121,7 @@ artigo_03/
 │   ├── app/
 │   │   ├── nlp/
 │   │   │   ├── models/
-│   │   │   │   ├── trained/          ← 5 modelos SMOTE finais (~2,1 GB)
+│   │   │   │   ├── trained/          ← modelo Fold 1 (publicado no Hugging Face Hub)
 │   │   │   │   └── cache/            ← BERTimbau base baixado do HuggingFace (~418 MB)
 │   │   │   ├── datasets/             ← corpus.csv (dataset final)
 │   │   │   ├── training/             ← scripts de treinamento
@@ -139,13 +139,10 @@ artigo_03/
 └── latex/                            ← artigo LaTeX (sbc-template.tex)
 ```
 
-### Sobre os modelos no repositório
+### Modelo no Hugging Face Hub
 
-Os diretórios `models/trained/` e `models/cache/` **não devem ser versionados no Git** (arquivos `.safetensors` de ~420 MB cada). Adicione ao `.gitignore`:
+O modelo fine-tuned (Fold 1) está publicado em:
 
-```
-src/app/nlp/models/trained/
-src/app/nlp/models/cache/
-```
+**https://huggingface.co/ravarmes/bertimbau-sentiment-youtube-pt**
 
-Para disponibilizar o modelo publicamente, o recomendado é fazer upload no **Hugging Face Hub** e documentar o link de download no README.
+Os diretórios `models/trained/` e `models/cache/` estão excluídos do versionamento Git via `.gitignore` (arquivos `.safetensors` de ~420 MB cada).
