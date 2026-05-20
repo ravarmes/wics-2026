@@ -1,0 +1,100 @@
+{
+  "baselines": {
+    "Lexico Simples (PT-BR)": {
+      "modelo": "Lexico Simples (PT-BR)",
+      "accuracy": 0.37636363636363634,
+      "f1_macro": 0.28255885135311815,
+      "f1_weighted": 0.2933622420215606,
+      "precision": 0.3947306343152122,
+      "recall": 0.35358324625566007
+    },
+    "TF-IDF + Regressao Logistica": {
+      "modelo": "TF-IDF + Regressao Logistica",
+      "accuracy": 0.6945454545454546,
+      "f1_macro": 0.6965877912779099,
+      "f1_weighted": 0.6943217046988136,
+      "precision": 0.6967778924435272,
+      "recall": 0.6965325670498084,
+      "tfidf_features": 3534
+    },
+    "BERTimbau Zero-shot + LogReg": {
+      "modelo": "BERTimbau Congelado (Zero-shot) + LogReg",
+      "accuracy": 0.7472727272727273,
+      "f1_macro": 0.748095656172917,
+      "f1_weighted": 0.7453477912196087,
+      "precision": 0.7483394402277792,
+      "recall": 0.7495541623127829,
+      "embedding_dim": 768
+    }
+  },
+  "nosso_modelo": {
+    "media": {
+      "accuracy": 0.7748943880720647,
+      "std_accuracy": 0.007429925062570699,
+      "f1_macro": 0.7760704248242363,
+      "std_f1": 0.007643578331112689
+    },
+    "folds": {
+      "Fold 1": {
+        "eval_loss": 1.229460597038269,
+        "eval_accuracy": 0.7863636363636364,
+        "eval_f1": 0.7885747050428141,
+        "eval_precision": 0.7946168865021838,
+        "eval_recall": 0.7863636363636364,
+        "eval_runtime": 20.9303,
+        "eval_samples_per_second": 21.022,
+        "eval_steps_per_second": 2.628,
+        "epoch": 5.0
+      },
+      "Fold 2": {
+        "eval_loss": 1.358201503753662,
+        "eval_accuracy": 0.7659090909090909,
+        "eval_f1": 0.7672069621090768,
+        "eval_precision": 0.7766272571488293,
+        "eval_recall": 0.7659090909090909,
+        "eval_runtime": 30.4362,
+        "eval_samples_per_second": 14.456,
+        "eval_steps_per_second": 1.807,
+        "epoch": 5.0
+      },
+      "Fold 3": {
+        "eval_loss": 1.4851797819137573,
+        "eval_accuracy": 0.7772727272727272,
+        "eval_f1": 0.7786651259101547,
+        "eval_precision": 0.7868684944684945,
+        "eval_recall": 0.7772727272727272,
+        "eval_runtime": 21.1923,
+        "eval_samples_per_second": 20.762,
+        "eval_steps_per_second": 2.595,
+        "epoch": 5.0
+      },
+      "Fold 4": {
+        "eval_loss": 1.3688983917236328,
+        "eval_accuracy": 0.7772727272727272,
+        "eval_f1": 0.7768915824915826,
+        "eval_precision": 0.7912059031381111,
+        "eval_recall": 0.7772727272727272,
+        "eval_runtime": 21.7703,
+        "eval_samples_per_second": 20.211,
+        "eval_steps_per_second": 2.526,
+        "epoch": 5.0
+      },
+      "Fold 5": {
+        "eval_loss": 1.3616091012954712,
+        "eval_accuracy": 0.7676537585421412,
+        "eval_f1": 0.7690137485675536,
+        "eval_precision": 0.7813108552780024,
+        "eval_recall": 0.7676537585421412,
+        "eval_runtime": 31.3549,
+        "eval_samples_per_second": 14.001,
+        "eval_steps_per_second": 1.754,
+        "epoch": 5.0
+      }
+    }
+  },
+  "dataset": {
+    "total_frases": 2749,
+    "test_set_frases": 550,
+    "test_set_percentual": 0.2
+  }
+}

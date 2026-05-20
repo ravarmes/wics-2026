@@ -1,0 +1,54 @@
+{
+  "model_path": "src/app/nlp/models/trained/AS_sentiment_cv_fold_1_smote_20260515_193838",
+  "fold": 1,
+  "test_set_size": 550,
+  "distribuicao_teste": {
+    "2": 176,
+    "1": 200,
+    "0": 174
+  },
+  "metricas_globais": {
+    "accuracy": 0.7727272727272727,
+    "f1_macro": 0.7748822217541185,
+    "f1_weighted": 0.7722838204195971,
+    "precision_macro": 0.7872512854907221,
+    "precision_weighted": 0.7814538747637338,
+    "recall_macro": 0.7719784047370255,
+    "recall_weighted": 0.7727272727272727
+  },
+  "metricas_por_classe": {
+    "Negativo": {
+      "precision": 0.9345238095238095,
+      "recall": 0.9022988505747126,
+      "f1": 0.9181286549707602
+    },
+    "Neutro": {
+      "precision": 0.6666666666666666,
+      "recall": 0.8,
+      "f1": 0.7272727272727272
+    },
+    "Positivo": {
+      "precision": 0.7605633802816901,
+      "recall": 0.6136363636363636,
+      "f1": 0.6792452830188679
+    }
+  },
+  "confusion_matrix": [
+    [
+      157,
+      14,
+      3
+    ],
+    [
+      9,
+      160,
+      31
+    ],
+    [
+      2,
+      66,
+      108
+    ]
+  ],
+  "data_execucao": "2026-05-16T16:56:06.681557"
+}

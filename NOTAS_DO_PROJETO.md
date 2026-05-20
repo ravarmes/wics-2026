@@ -87,15 +87,15 @@ O teste oficial foi realizado com o **modelo do Fold 1** (`193838`), escolhido p
 
 | Modelo | Acurácia | F1 Macro |
 |--------|----------|----------|
-| Léxico simples (PT-BR) | 37,64% | 0,2826 |
+| Léxico simples (PT-BR) | 38,18% | 0,2978 |
 | TF-IDF + Regressão Logística | 69,45% | 0,6966 |
 | BERTimbau zero-shot + LogReg | 74,73% | 0,7481 |
 | **BERTimbau fine-tuned (CV média)** | **77,49%** | **0,7761** |
 | **BERTimbau fine-tuned (holdout)** | **77,27%** | **0,7749** |
 
-**Ganho sobre o baseline mais forte (zero-shot):**
-- CV média: +2,76 pp
-- Holdout: +2,54 pp
+**Ganho sobre o baseline mais forte (zero-shot, 74,73%):**
+- Holdout: +2,54 pp em acurácia
+- F1 Macro holdout: +2,68 pp (0,7749 vs 0,7481)
 - F1 Negativo (crítico para segurança infantil): **0,9181 (91,8%)**
 
 ---
@@ -125,7 +125,11 @@ artigo_03/
 │   │   │   │   └── cache/            ← BERTimbau base baixado do HuggingFace (~418 MB)
 │   │   │   ├── datasets/             ← corpus.csv (dataset final)
 │   │   │   ├── training/             ← scripts de treinamento
-│   │   │   ├── evaluation/           ← scripts e resultados de avaliação
+│   │   │   ├── evaluation/
+│   │   │   │   └── results/
+│   │   │   │       ├── holdout_oficial.json      ← resultado do modelo no holdout (77,27%)
+│   │   │   │       ├── baselines_por_classe.json ← baselines com métricas por classe
+│   │   │   │       └── comparacao_final.json     ← comparação geral com CV folds
 │   │   │   └── utils/
 │   │   ├── api/                      ← endpoints REST
 │   │   ├── core/                     ← YouTube API, logging
@@ -133,7 +137,12 @@ artigo_03/
 │   │   ├── static/ e templates/      ← protótipo web
 │   │   └── main.py
 │   ├── scripts/                      ← scripts organizados de treino e avaliação
-│   ├── _baselines/                   ← implementações e resultados dos baselines
+│   ├── _baselines/
+│   │   ├── baselines.py              ← script de avaliação dos baselines
+│   │   ├── baselines_results.json    ← resumo dos baselines (sem per-class completo)
+│   │   ├── baseline_lexico.json      ← resultado individual do léxico
+│   │   ├── baseline_tfidf.json       ← resultado individual do TF-IDF
+│   │   └── baseline_bertimbau.json   ← resultado individual do BERTimbau zero-shot
 │   ├── config/                       ← configuração de hiperparâmetros
 │   └── data/                         ← corpus.csv (cópia para uso pelos scripts)
 └── latex/                            ← artigo LaTeX (sbc-template.tex)
