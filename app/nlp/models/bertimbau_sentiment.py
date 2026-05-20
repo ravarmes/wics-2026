@@ -31,43 +31,50 @@ class BertimbauSentiment(BertimbauBase):
     - Positivo (2)
     """
     
-    def __init__(self, model_path: Optional[str] = None, device: Optional[str] = None):
+    def __init__(self, model_path: Optional[str] = None, device: Optional[str] = None,
+                 apply_handle_negations: bool = True):
         """
         Inicializa o modelo de análise de sentimentos.
-        
+
         Args:
             model_path: Caminho para modelo pré-treinado (opcional)
             device: Dispositivo para execução (cuda/cpu)
+            apply_handle_negations: Se True, aplica marcacao NEG_palavra apos negacoes
+                (heuristica classica). Se False, deixa o texto cru — recomendado
+                para transformers modernos que ja entendem negacao por contexto.
+                Default: True (comportamento original).
         """
         super().__init__(
             task_name='AS',
             model_path=model_path,
             device=device
         )
-        
-        logger.info("Modelo de Análise de Sentimentos inicializado")
-    
+
+        self.apply_handle_negations = apply_handle_negations
+        logger.info(f"Modelo de Análise de Sentimentos inicializado (handle_negations={apply_handle_negations})")
+
     def preprocess_for_sentiment(self, text: str) -> str:
         """
         Pré-processamento específico para análise de sentimentos.
-        
+
         Implementa pré-processamento específico para sentimentos:
         - Limpeza de texto (remoção de aspas triplas do formato do dataset)
-        - Tratamento de negações
+        - Tratamento de negações (opcional, controlado por self.apply_handle_negations)
         - Normalização de espaços
-        
+
         Args:
             text: Texto original
-            
+
         Returns:
             Texto pré-processado
         """
         # Aplica limpeza básica primeiro
         processed_text = self._clean_text(text)
-        
-        # Trata negações
-        processed_text = self._handle_negations(processed_text)
-        
+
+        # Trata negações (somente se habilitado)
+        if self.apply_handle_negations:
+            processed_text = self._handle_negations(processed_text)
+
         return processed_text
     
     def predict_sentiment(self, text: str, return_probabilities: bool = True) -> Dict[str, Any]:
@@ -135,13 +142,12 @@ class BertimbauSentiment(BertimbauBase):
         val_texts: List[str],
         val_labels: List[int],
         config_name: str = 'default',
-        experiment_name: Optional[str] = None
+        experiment_name: Optional[str] = None,
+        loss_config: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Treina o modelo de análise de sentimentos.
-        
-        TODO: Customize este método conforme necessário para sua implementação
-        
+
         Args:
             train_texts: Textos de treino
             train_labels: Labels de treino
@@ -149,7 +155,11 @@ class BertimbauSentiment(BertimbauBase):
             val_labels: Labels de validação
             config_name: Nome da configuração de treinamento
             experiment_name: Nome do experimento
-            
+            loss_config: Configuracao opcional de loss customizada:
+                - None: CrossEntropy padrao (comportamento original)
+                - {'type': 'weighted_ce', 'weights': [w0, w1, w2]}
+                - {'type': 'focal', 'gamma': 2.0, 'alpha': [a0, a1, a2]}
+
         Returns:
             Dict com resultados do treinamento
         """
@@ -201,12 +211,15 @@ class BertimbauSentiment(BertimbauBase):
             **training_config
         )
         
-        # Treina o modelo
+        # Treina o modelo (passando loss_config se fornecido)
+        if loss_config:
+            logger.info(f"Treinando com loss customizada: {loss_config.get('type')}")
         model, trainer = training_helper.train_model(
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             num_labels=self.num_labels,
-            training_args=training_args
+            training_args=training_args,
+            loss_config=loss_config
         )
         
         # Atualiza o modelo atual
@@ -216,16 +229,19 @@ class BertimbauSentiment(BertimbauBase):
         eval_results = trainer.evaluate()
         
         # Salva o modelo
+        additional_info = {
+            'task_specific_info': 'Modelo treinado para análise de sentimentos',
+            'preprocessing_applied': 'Limpeza de aspas triplas, tratamento de negações, normalização de espaços'
+        }
+        if loss_config:
+            additional_info['loss_config'] = loss_config
         training_helper.save_model_with_metadata(
             model=model,
             tokenizer=self.tokenizer,
             output_dir=output_dir,
             training_args=training_args,
             metrics=eval_results,
-            additional_info={
-                'task_specific_info': 'Modelo treinado para análise de sentimentos',
-                'preprocessing_applied': 'Limpeza de aspas triplas, tratamento de negações, normalização de espaços'
-            }
+            additional_info=additional_info
         )
         
         logger.info(f"Treinamento concluído. Modelo salvo em {output_dir}")

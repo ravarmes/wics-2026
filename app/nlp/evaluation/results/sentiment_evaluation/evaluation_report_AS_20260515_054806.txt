@@ -1,0 +1,49 @@
+RELATÓRIO DE AVALIAÇÃO - AS
+==================================================
+
+Data da avaliação: 15/05/2026 05:48:06
+Modelo avaliado: H:\Outros computadores\Dell Inspiron\Curriculo\Eventos\2026 WICS Sentimentos\artigo_03\src\app\nlp\models\trained\AS_sentiment_cv_fold_5_20260515_022344
+Tarefa: AS
+Classes: Negativo, Neutro, Positivo
+
+MÉTRICAS GERAIS
+--------------------
+Acurácia: 0.8008
+F1-Score (Macro): 0.7814
+F1-Score (Weighted): 0.8039
+Precisão (Macro): 0.7775
+Recall (Macro): 0.7991
+
+AUC-ROC
+----------
+AUC-ROC (macro): 0.9139
+AUC-ROC (weighted): 0.9145
+
+MÉTRICAS POR CLASSE
+-------------------------
+Negativo:
+  Precisão: 0.9139
+  Recall: 0.9052
+  F1-Score: 0.9095
+  Suporte: 211
+
+Neutro:
+  Precisão: 0.8305
+  Recall: 0.7000
+  F1-Score: 0.7597
+  Suporte: 210
+
+Positivo:
+  Precisão: 0.5882
+  Recall: 0.7921
+  F1-Score: 0.6751
+  Suporte: 101
+
+MATRIZ DE CONFUSÃO
+--------------------
+Predito →
+Real ↓
+        Negativo  NeutroPositivo
+Negativo     191      12       8
+  Neutro      15     147      48
+Positivo       3      18      80

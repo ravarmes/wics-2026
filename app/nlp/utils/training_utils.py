@@ -7,6 +7,7 @@ dos modelos BERTimbau de forma padronizada.
 
 import os
 import torch
+import torch.nn as nn
 import json
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
@@ -21,6 +22,53 @@ from datasets import Dataset
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# CUSTOM TRAINERS - Para suporte a Class Weights e Focal Loss
+# ============================================================
+
+class WeightedCETrainer(Trainer):
+    """Trainer com Cross-Entropy ponderada por classe.
+
+    Aplica os class_weights diretamente na loss durante o treinamento,
+    forcando o modelo a prestar mais atencao a classes minoritarias.
+    """
+    def __init__(self, class_weights=None, **kwargs):
+        super().__init__(**kwargs)
+        self.class_weights = class_weights
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+        weight = self.class_weights.to(logits.device) if self.class_weights is not None else None
+        loss_fct = nn.CrossEntropyLoss(weight=weight)
+        loss = loss_fct(logits, labels)
+        return (loss, outputs) if return_outputs else loss
+
+
+class FocalLossTrainer(Trainer):
+    """Trainer com Focal Loss (Lin et al. 2017).
+
+    FL(p) = -(1-p)^gamma * log(p)
+    Reduz peso de exemplos faceis e foca em exemplos dificeis.
+    """
+    def __init__(self, gamma=2.0, alpha=None, **kwargs):
+        super().__init__(**kwargs)
+        self.gamma = gamma
+        self.alpha = alpha
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+        weight = self.alpha.to(logits.device) if self.alpha is not None else None
+        ce_loss = nn.functional.cross_entropy(logits, labels, weight=weight, reduction='none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = ((1 - pt) ** self.gamma) * ce_loss
+        loss = focal_loss.mean()
+        return (loss, outputs) if return_outputs else loss
 
 class TrainingHelper:
     """Classe auxiliar para treinamento de modelos."""
@@ -178,10 +226,18 @@ class TrainingHelper:
         val_dataset: Dataset,
         num_labels: int,
         training_args: TrainingArguments,
-        model_path: Optional[str] = None
+        model_path: Optional[str] = None,
+        loss_config: Optional[Dict[str, Any]] = None
     ) -> Tuple[BertForSequenceClassification, Trainer]:
         """
         Treina o modelo.
+
+        Args:
+            ...
+            loss_config: Configuracao opcional de loss customizada. Formatos:
+                - None: usa CrossEntropy padrao
+                - {'type': 'weighted_ce', 'weights': [w0, w1, w2]}: CE ponderada
+                - {'type': 'focal', 'gamma': 2.0, 'alpha': [a0, a1, a2]}: Focal Loss
         """
         # Carrega o modelo
         if model_path and os.path.exists(model_path):
@@ -192,24 +248,57 @@ class TrainingHelper:
             model = BertForSequenceClassification.from_pretrained(
                 self.model_name, num_labels=num_labels
             )
-        
-        # Cria o trainer (SEM EarlyStoppingCallback para evitar erro no Windows/No-Checkpoint)
-        trainer = Trainer(
-            model=model,
-            args=training_args,
-            train_dataset=train_dataset,
-            eval_dataset=val_dataset,
-            compute_metrics=self.compute_metrics,
-            callbacks=None # Removido explicitamente
-        )
-        
+
+        # Cria o trainer apropriado baseado em loss_config
+        if loss_config is None:
+            # Comportamento padrao: CrossEntropy
+            trainer = Trainer(
+                model=model,
+                args=training_args,
+                train_dataset=train_dataset,
+                eval_dataset=val_dataset,
+                compute_metrics=self.compute_metrics,
+                callbacks=None
+            )
+            logger.info(f"Trainer: padrao (CrossEntropy)")
+        elif loss_config.get('type') == 'weighted_ce':
+            weights_list = loss_config['weights']
+            class_weights = torch.tensor(weights_list, dtype=torch.float32)
+            trainer = WeightedCETrainer(
+                class_weights=class_weights,
+                model=model,
+                args=training_args,
+                train_dataset=train_dataset,
+                eval_dataset=val_dataset,
+                compute_metrics=self.compute_metrics,
+                callbacks=None
+            )
+            logger.info(f"Trainer: WeightedCE com weights={weights_list}")
+        elif loss_config.get('type') == 'focal':
+            gamma = loss_config.get('gamma', 2.0)
+            alpha_list = loss_config.get('alpha')
+            alpha = torch.tensor(alpha_list, dtype=torch.float32) if alpha_list else None
+            trainer = FocalLossTrainer(
+                gamma=gamma,
+                alpha=alpha,
+                model=model,
+                args=training_args,
+                train_dataset=train_dataset,
+                eval_dataset=val_dataset,
+                compute_metrics=self.compute_metrics,
+                callbacks=None
+            )
+            logger.info(f"Trainer: FocalLoss com gamma={gamma}, alpha={alpha_list}")
+        else:
+            raise ValueError(f"loss_config['type'] desconhecido: {loss_config.get('type')}")
+
         logger.info(f"Iniciando treinamento para {self.task_name}")
-        
+
         # Treina o modelo
         trainer.train()
-        
-        logger.info(f"Treinamento concluído para {self.task_name}")
-        
+
+        logger.info(f"Treinamento concluido para {self.task_name}")
+
         return model, trainer
     
     def save_model_with_metadata(
