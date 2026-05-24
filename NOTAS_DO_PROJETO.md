@@ -31,13 +31,15 @@ Todas as frases do corpus são **reais**, extraídas de transcrições e título
 
 ## 2. Metodologia de Treinamento
 
-### Configuração final
+### Configuração final (artigo)
 
 - **Validação**: 5-Fold Stratified Cross-Validation sobre os 80% de treino
 - **Balanceamento**: Random Oversampling aplicado **apenas nos folds de treino** (o holdout permanece intocado). O oversampling opera sobre as representações vetoriais usadas durante o treinamento — não modifica nem gera texto no corpus.
 - **Otimizador**: AdamW com learning rate scheduling
 - **Épocas**: 5
 - **Batch size**: 8
+- **Learning rate**: 3e-5
+- **Warmup steps**: 100
 - **Seed**: 42
 
 ### Nota sobre versões intermediárias
@@ -50,53 +52,56 @@ Os arquivos `RESULTADOS_FINAIS_SMOTE.md` e `RELATORIO_FINAL_COMPLETO.md` (agora 
 
 ### 5-Fold Cross-Validation (sobre os 80% de treino)
 
-| Fold | Acurácia | F1 Macro | Precisão | Recall | Modelo salvo |
-|------|----------|----------|----------|--------|--------------|
-| 1 | 78,64% | 0,7886 | 0,7946 | 0,7864 | `AS_sentiment_cv_fold_1_smote_20260515_193838` |
-| 2 | 76,59% | 0,7672 | 0,7732 | 0,7659 | `AS_sentiment_cv_fold_2_smote_20260515_215621` |
-| 3 | 77,73% | 0,7787 | 0,7945 | 0,7773 | `AS_sentiment_cv_fold_3_smote_20260515_210251` |
-| 4 | 77,73% | 0,7769 | 0,7912 | 0,7773 | `AS_sentiment_cv_fold_4_smote_20260515_230329` |
-| 5 | 76,77% | 0,7690 | 0,7783 | 0,7677 | `AS_sentiment_cv_fold_5_smote_20260515_223343` |
-| **Média ± Std** | **77,49% ± 0,74%** | **0,7761 ± 0,0076** | — | — | — |
+| Fold | F1 Macro |
+|------|----------|
+| 1 | 78,24% |
+| 2 | 75,67% |
+| 3 | 76,57% |
+| 4 | 79,54% |
+| 5 | 77,24% |
+| **Média ± Std** | **77,46% ± 1,41%** |
 
-### Avaliação no conjunto holdout (20% isolados)
+Fonte: `_baselines/ensemble_results.json` (Config A: lr=3e-5, warmup=100, épocas=5).
 
-O teste oficial foi realizado com o **modelo do Fold 1** (`193838`), escolhido por ser o de maior acurácia na validação.
+### Avaliação no conjunto holdout (550 amostras, 20%)
 
-> **Nota metodológica**: foi avaliado apenas o Fold 1 no holdout, não um ensemble dos 5 folds. Uma abordagem de ensemble (média das probabilidades dos 5 modelos) seria metodologicamente mais robusta, mas o resultado abaixo já está consolidado no artigo.
+O classificador final é o **ensemble (soft voting) dos cinco modelos** da validação cruzada.
 
 | Métrica | Valor |
 |---------|-------|
-| Acurácia | **77,27%** |
-| F1 Macro | 0,7749 |
-| F1 Weighted | 0,7723 |
-| Precisão Macro | 0,7873 |
-| Recall Macro | 0,7720 |
+| Acurácia | **79,64%** |
+| F1 Macro | **79,84%** |
+| F1 Weighted | 79,63% |
+| Precisão Macro | 81,46% |
+| Recall Macro | 79,45% |
 
 **Por classe (holdout):**
 
 | Classe | Precisão | Recall | F1 | Suporte |
 |--------|----------|--------|----|---------|
-| Negativo | 0,9345 | 0,9023 | **0,9181** | 174 |
-| Neutro | 0,6667 | 0,8000 | 0,7273 | 200 |
-| Positivo | 0,7606 | 0,6136 | 0,6792 | 176 |
+| Negativo | 93,4% | 89,1% | **91,2%** | 174 |
+| Neutro | 69,0% | 84,5% | 76,0% | 200 |
+| Positivo | 82,0% | 64,8% | 72,4% | 176 |
+
+Fonte: `_baselines/ensemble_results.json` (Config A, campo `ensemble`).
 
 ---
 
 ## 4. Baselines Comparados
 
-| Modelo | Acurácia | F1 Macro |
-|--------|----------|----------|
-| Léxico simples (PT-BR) | 38,18% | 0,2978 |
-| TF-IDF + Regressão Logística | 69,45% | 0,6966 |
-| BERTimbau zero-shot + LogReg | 74,73% | 0,7481 |
-| **BERTimbau fine-tuned (CV média)** | **77,49%** | **0,7761** |
-| **BERTimbau fine-tuned (holdout)** | **77,27%** | **0,7749** |
+| Modelo | Acurácia | F1 Macro | F1 Neg | F1 Neu | F1 Pos |
+|--------|----------|----------|--------|--------|--------|
+| SentiLex-PT | 45,45% | 44,68% | 47,1% | 48,2% | 38,7% |
+| TF-IDF + Regressão Logística | 69,45% | 69,66% | 80,2% | 65,3% | 63,4% |
+| BERTimbau congelado + LR | 74,73% | 74,81% | 88,0% | 69,6% | 66,9% |
+| **BERTimbau ensemble (proposto)** | **79,64%** | **79,84%** | **91,2%** | **76,0%** | **72,4%** |
 
-**Ganho sobre o baseline mais forte (zero-shot, 74,73%):**
-- Holdout: +2,54 pp em acurácia
-- F1 Macro holdout: +2,68 pp (0,7749 vs 0,7481)
-- F1 Negativo (crítico para segurança infantil): **0,9181 (91,8%)**
+Fonte: `_baselines/baselines_results.json` (três primeiros) e `_baselines/ensemble_results.json` (ensemble).
+
+**Ganho sobre o baseline mais forte (BERTimbau congelado, 74,73%):**
+- Acurácia: +4,91 pp
+- F1 Macro: +5,03 pp
+- F1 Negativo (crítico para segurança infantil): **91,2%** (+3,2 pp)
 
 ---
 
@@ -121,15 +126,12 @@ artigo_03/
 │   ├── app/
 │   │   ├── nlp/
 │   │   │   ├── models/
-│   │   │   │   ├── trained/          ← modelo Fold 1 (publicado no Hugging Face Hub)
+│   │   │   │   ├── trained/          ← modelos dos 5 folds (publicados no Hugging Face Hub)
 │   │   │   │   └── cache/            ← BERTimbau base baixado do HuggingFace (~418 MB)
 │   │   │   ├── datasets/             ← corpus.csv (dataset final)
 │   │   │   ├── training/             ← scripts de treinamento
 │   │   │   ├── evaluation/
-│   │   │   │   └── results/
-│   │   │   │       ├── holdout_oficial.json      ← resultado do modelo no holdout (77,27%)
-│   │   │   │       ├── baselines_por_classe.json ← baselines com métricas por classe
-│   │   │   │       └── comparacao_final.json     ← comparação geral com CV folds
+│   │   │   │   └── results/          ← resultados de avaliação
 │   │   │   └── utils/
 │   │   ├── api/                      ← endpoints REST
 │   │   ├── core/                     ← YouTube API, logging
@@ -138,11 +140,17 @@ artigo_03/
 │   │   └── main.py
 │   ├── scripts/                      ← scripts organizados de treino e avaliação
 │   ├── _baselines/
-│   │   ├── baselines.py              ← script de avaliação dos baselines
-│   │   ├── baselines_results.json    ← resumo dos baselines (sem per-class completo)
-│   │   ├── baseline_lexico.json      ← resultado individual do léxico
-│   │   ├── baseline_tfidf.json       ← resultado individual do TF-IDF
-│   │   └── baseline_bertimbau.json   ← resultado individual do BERTimbau zero-shot
+│   │   ├── baselines.py              ← avaliação dos baselines clássicos
+│   │   ├── baselines_results.json    ← resultados dos 3 baselines citados no artigo
+│   │   ├── ensemble_folds.py         ← avaliação do ensemble dos 5 folds no holdout
+│   │   ├── ensemble_results.json     ← resultado do ensemble citado no artigo
+│   │   ├── gen_confusion_matrix.py   ← geração da matriz de confusão (figura do artigo)
+│   │   ├── run_all_02.py             ← orquestração dos baselines
+│   │   ├── run_lexicon_baselines.py  ← baseline SentiLex-PT
+│   │   ├── run_congelado_baseline.py ← baseline BERTimbau congelado
+│   │   ├── reeval_grid_holdout.py    ← reavaliação de configurações de grid
+│   │   ├── verify_article_corpus.py  ← verificação do corpus
+│   │   └── SentiLex-flex-PT02.txt    ← léxico SentiLex-PT
 │   ├── config/                       ← configuração de hiperparâmetros
 │   └── data/                         ← corpus.csv (cópia para uso pelos scripts)
 └── latex/                            ← artigo LaTeX (sbc-template.tex)
@@ -150,7 +158,7 @@ artigo_03/
 
 ### Modelo no Hugging Face Hub
 
-O modelo fine-tuned (Fold 1) está publicado em:
+O modelo fine-tuned está publicado em:
 
 **https://huggingface.co/ravarmes/bertimbau-sentiment-youtube-pt**
 

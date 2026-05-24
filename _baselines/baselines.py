@@ -29,7 +29,13 @@ from sklearn.metrics import (accuracy_score, classification_report, f1_score,
 from sklearn.model_selection import train_test_split
 
 ROOT = Path(__file__).parent
-CORPUS = ROOT / "corpus.csv"
+_CORPUS_CANDIDATES = [
+    ROOT / "corpus.csv",
+    ROOT.parent / "app" / "nlp" / "datasets" / "corpus.csv",
+    ROOT.parent / "data" / "corpus.csv",
+]
+CORPUS = next((p for p in _CORPUS_CANDIDATES if p.exists()), _CORPUS_CANDIDATES[0])
+SENTILEXPT = ROOT / "SentiLex-flex-PT02.txt"
 SEED = 42
 LABELS = ["Negativo", "Neutro", "Positivo"]
 LABEL_TO_ID = {l: i for i, l in enumerate(LABELS)}
@@ -128,6 +134,59 @@ POS_WORDS = {
     "positivo", "luz", "iluminar", "brilho", "brilhar", "brilhante",
     "parabens", "viva", "uhuu", "obrigadinho",
 }
+
+
+def load_sentilexpt(path: Path) -> dict[str, int]:
+    """Parse SentiLex-flex-PT02.txt → {word_form: polarity}.
+
+    Polarity from POL:N0 field: 1=positive, -1=negative (0=neutral, skipped).
+    When the same surface form appears with conflicting polarities across
+    entries (e.g. different PoS tags), majority vote decides; ties → skip.
+    """
+    from collections import defaultdict
+    votes: dict[str, list[int]] = defaultdict(list)
+    pol_re = re.compile(r"POL:N0=(-?1|0)")
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            comma = line.find(",")
+            if comma == -1:
+                continue
+            word = line[:comma].lower()
+            m = pol_re.search(line)
+            if not m:
+                continue
+            pol = int(m.group(1))
+            if pol != 0:
+                votes[word].append(pol)
+    result: dict[str, int] = {}
+    for word, pols in votes.items():
+        pos_count = pols.count(1)
+        neg_count = pols.count(-1)
+        if pos_count > neg_count:
+            result[word] = 1
+        elif neg_count > pos_count:
+            result[word] = -1
+        # tie → omit (treated as neutral at inference time)
+    return result
+
+
+def sentilexpt_predict(sentences: np.ndarray,
+                       polarity_dict: dict[str, int]) -> np.ndarray:
+    preds = []
+    for s in sentences:
+        toks = re.findall(r"\w+", s.lower())
+        pos = sum(1 for t in toks if polarity_dict.get(t, 0) > 0)
+        neg = sum(1 for t in toks if polarity_dict.get(t, 0) < 0)
+        if neg > pos:
+            preds.append(0)
+        elif pos > neg:
+            preds.append(2)
+        else:
+            preds.append(1)
+    return np.array(preds)
 
 
 def lexicon_predict(sentences: np.ndarray) -> np.ndarray:
@@ -244,6 +303,20 @@ def metrics_block(name: str, y_true, y_pred) -> dict:
     }
 
 
+def save_individual(name: str, data: dict) -> None:
+    slug = (name.lower()
+            .replace(" ", "_")
+            .replace("+", "")
+            .replace("(", "")
+            .replace(")", "")
+            .replace("-", "")
+            .replace("__", "_"))
+    out = ROOT / f"baseline_{slug}.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    print(f"  → salvo em {out.name}")
+
+
 def main():
     t0 = time.time()
     X, y = load_corpus()
@@ -256,19 +329,37 @@ def main():
 
     print("\n>>> Baseline 1: Lexico simples PT-BR")
     y_lex = lexicon_predict(X_test)
-    results.append(metrics_block("Lexico simples (PT-BR)", y_test, y_lex))
+    r = metrics_block("Lexico simples (PT-BR)", y_test, y_lex)
+    results.append(r)
+    save_individual("lexico", r)
 
-    print("\n>>> Baseline 2: TF-IDF + Regressao Logistica")
+    print("\n>>> Baseline 2: SentiLex-PT (flex, POL:N0)")
+    if SENTILEXPT.exists():
+        pol_dict = load_sentilexpt(SENTILEXPT)
+        print(f"  SentiLex carregado: {len(pol_dict)} formas únicas "
+              f"({sum(1 for v in pol_dict.values() if v>0)} pos, "
+              f"{sum(1 for v in pol_dict.values() if v<0)} neg)")
+        y_senti = sentilexpt_predict(X_test, pol_dict)
+        r = metrics_block("SentiLex-PT (flex, POL:N0)", y_test, y_senti)
+        results.append(r)
+        save_individual("sentilexpt", r)
+    else:
+        print(f"  AVISO: {SENTILEXPT} não encontrado — baseline ignorado.")
+
+    print("\n>>> Baseline 3: TF-IDF + Regressao Logistica")
     y_tfidf = run_tfidf(X_train, y_train, X_test)
-    results.append(metrics_block("TF-IDF + Regressao Logistica",
-                                 y_test, y_tfidf))
+    r = metrics_block("TF-IDF + Regressao Logistica", y_test, y_tfidf)
+    results.append(r)
+    save_individual("tfidf", r)
 
-    print("\n>>> Baseline 3: BERTimbau congelado + Regressao Logistica")
+    print("\n>>> Baseline 4: BERTimbau congelado + Regressao Logistica")
     try:
         y_bert = run_bertimbau_frozen(X_train, y_train, X_test)
-        results.append(metrics_block(
+        r = metrics_block(
             "BERTimbau congelado + Regressao Logistica (zero-shot)",
-            y_test, y_bert))
+            y_test, y_bert)
+        results.append(r)
+        save_individual("bertimbau", r)
     except Exception as e:
         print(f"  Falha no baseline BERTimbau: {e}")
         import traceback

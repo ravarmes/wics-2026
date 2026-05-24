@@ -59,14 +59,15 @@ python scripts/data_preprocessing.py \
 ### Treinamento de Modelos
 
 ```bash
-# Treinar modelo de sentimento
+# Treinar modelo de sentimento (configuração do artigo WICS 2026)
 python scripts/train_model.py \
     --model sentiment \
     --train-data data/sentiment_train.csv \
     --output-dir models/sentiment \
-    --epochs 3 \
-    --batch-size 16 \
-    --learning-rate 2e-5
+    --epochs 5 \
+    --batch-size 8 \
+    --learning-rate 3e-5 \
+    --warmup-steps 100
 
 # Treinar modelo de toxicidade
 python scripts/train_model.py \
@@ -78,6 +79,14 @@ python scripts/train_model.py \
     --learning-rate 3e-5 \
     --mixed-precision \
     --early-stopping
+```
+
+### Ensemble dos Folds (configuração do artigo)
+
+O classificador final do artigo é um **ensemble (soft voting) dos cinco modelos** gerados pela validação cruzada. O script de avaliação do ensemble está em `_baselines/ensemble_folds.py`; os resultados consolidados em `_baselines/ensemble_results.json`.
+
+```bash
+python _baselines/ensemble_folds.py
 ```
 
 ### Avaliação de Modelos
@@ -127,9 +136,10 @@ O arquivo `config/experiment_config.json` contém todas as configurações:
       "model_name": "neuralmind/bert-base-portuguese-cased",
       "num_labels": 3,
       "max_length": 512,
-      "learning_rate": 2e-5,
-      "batch_size": 16,
-      "epochs": 3,
+      "learning_rate": 3e-5,
+      "batch_size": 8,
+      "epochs": 5,
+      "warmup_steps": 100,
       "dropout": 0.1
     }
   }
@@ -227,7 +237,7 @@ text,label
 
 ### Rótulos por Tipo de Modelo
 
-- **Sentiment**: `positive`, `negative`, `neutral`
+- **Sentiment**: `Positivo`, `Negativo`, `Neutro`
 - **Toxicity**: `toxic`, `non_toxic`
 - **Language**: `appropriate`, `inappropriate`
 - **Educational**: `educational`, `non_educational`
